@@ -8,11 +8,10 @@ class KNearestNeighborsRecModel():
             k : number of recommendations per user
     """
 
-    def get_recs(self, user_vectors, user_history):
+    def get_recs(self, user_history):
         """ generates k recommendations for every vector based on cosine similarity
         Parameters
         ----------
-            user_vectors : dict, (user_id => songId) the last song listened to by the user
             user_history : dict, (user_id => list of songs in listening history), to filter recommendations
             k : int, length of list of ranked recs for each query
         Returns 
@@ -21,8 +20,8 @@ class KNearestNeighborsRecModel():
         """
         similarity_matrix = self.build_sim_matrix
         user_recs = {}
-        for user, song_id in user_vectors.items():
-            user_recs[user] = self._get_recs_user(song_id, user_history[user], similarity_matrix)
+        for user, song_ids in user_history.items():
+            user_recs[user] = self._get_recs_user(user_history[user][:-1], user_history[user], similarity_matrix)
         return user_recs
 
     def _get_recs_user(self, query_id, history, similarity_matrix):
@@ -82,3 +81,6 @@ class KNearestNeighborsRecModel():
                     sim_matrix[songid1][songid2] = sim
                     sim_matrix[songid2][songid1] = sim
         return sim_matrix
+
+
+# TODO: test get recs super

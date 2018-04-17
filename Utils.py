@@ -56,12 +56,13 @@ def build_tfidf_vectors(id_vec_mapping):
         id_vec_mapping[id] = tfidf[vec]
     return id_vec_mapping, tfidf
 
-def sparse_to_dense(sparse_vector, size):
+def sparse_to_dense(sparse_vector, size, norm = False):
     """ turns sparse vector into dense
         Parameters
         ---------- 
             sparse_vector : list of (index, value) tuples
             size : int, dimensionality of dense vector
+            norm : Boolean, if true normalize the resulting vector using 2-norm
         Returns
         -------
             dense_vector : dense numpy array
@@ -69,6 +70,9 @@ def sparse_to_dense(sparse_vector, size):
     dense_vec = np.zeros(size)
     for (index, value) in sparse_vector:
         dense_vec[index] = value
+    if norm:
+        norm_value = np.linalg.norm(dense_vec)
+        return dense_vec / norm_value
     return dense_vec
 
 def load_dataset(valid_songs=None):
@@ -82,8 +86,8 @@ def load_dataset(valid_songs=None):
         Returns
         -------
             train : dict (userId => list of songIds)
-            validation : dict (userId => list of songId)
-            test : dict (userId => list of songId)
+            validation : dict (userId => songId)
+            test : dict (userId => songId)
     """
     train = {}
     validation = {}
@@ -117,10 +121,29 @@ def insert_song_into_history(song, history, valid_songs):
         Returns
         -------
             history : list, updated listening history
-            """
+    """
     if valid_songs == None or song in valid_songs:
         history.append(song)
     return history
+
+def compute_metrics(recs, test):
+    """ computes hit rate, nDCG for recommendations
+        Parameters
+        ----------
+            recs : dict, (userID => list of recommendations)
+            test : dict, dict (userID => next songID)
+        Returns
+        -------
+            hit_rate : float, number of hits divided by K (1/K if next song is in recommendations)
+            nDCG : float, normalized discounted cumulative gain 
+                https://en.wikipedia.org/wiki/Discounted_cumulative_gain#Normalized_DCG
+    """
+    users = len(recs.keys)
+    hit_rate = 0
+
+    for user, rec_items in recs.items():
+        if test[user] in rec_items:
+
 
 
 

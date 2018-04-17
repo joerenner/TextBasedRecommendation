@@ -1,6 +1,8 @@
-from gensim.models import LsiModel
 from KNearestNeighborsRec import KNearestNeighborsRecModel
+from gensim.models import LsiModel
 from scipy.spatial.distance import cosine
+from numpy import zeros
+from numpy.linalg import norm
 import Utils
 
 class LatentSemanticIndexingModel(KNearestNeighborsRecModel):
@@ -21,7 +23,7 @@ class LatentSemanticIndexingModel(KNearestNeighborsRecModel):
         """
         self.vector_size = vector_size
         self.k = k
-        self.vectors = {}
+        self.item_vectors = {}
         self.user_vectors = {}
         self.tag_dict = {}
         self.tfidf_model = {}
@@ -35,9 +37,9 @@ class LatentSemanticIndexingModel(KNearestNeighborsRecModel):
         for song_id, tfidf_vector in id_vec_mapping.items():
             sparse_vec = self.lsi_model[tfidf_vector]
             if len(sparse_vec) > 0:
-                self.vectors[song_id] = Utils.sparse_to_dense(sparse_vec, self.vector_size)
+                self.item_vectors[song_id] = Utils.sparse_to_dense(sparse_vec, self.vector_size, norm=True)
 
-    def get_recs(self, user_vectors, user_history):
+    def get_recs(self, user_history):
         """ generates k recommendations for every vector based on cosine similarity
         Parameters
         ----------
@@ -49,7 +51,7 @@ class LatentSemanticIndexingModel(KNearestNeighborsRecModel):
             user_recs : dict, (user_id => list of ranked song recommendation ids)
         """
         user_recs = {}
-        for user, vector in user_vectors.items():
+        for user, vector in self.user_vectors.items():
             user_recs[user] = self._get_recs_user(vector, user_history[user])
         return user_recs
 
@@ -66,18 +68,33 @@ class LatentSemanticIndexingModel(KNearestNeighborsRecModel):
         """
         recommendations = []
         rec_length = 0
-        for song_id, song_vector in self.vectors.items():
+        for song_id, song_vector in self.item_vectors.items():
             if song_id not in history:
                 sim = 1.0 - cosine(song_vector, user_vector)
                 recommendations = self._insert_song_into_recs(song_id, sim, rec_length, recommendations)
         return recommendations
 
-    def build
+    def build_users(self, train):
+        """ builds a user vector by summing the item vectors in user's training set and normalizing to unit length
+        Parameters
+        ----------
+            train : dict, (user_id => training items)
+        """
+        for user, history in train.items():
+            user_vec = zeros(self.vector_size)
+            for song_id in history:
+                user_vec += self.item_vectors[song_id]
+            norm_value = norm(user_vec)
+            self.user_vectors[user] = user_vec / norm_value
 
-
-lsiModel = LatentSemanticIndexingModel(100)
+lsiModel = LatentSemanticIndexingModel(vector_size=100, k=10)
+print("computing item vectors")
 lsiModel.compute_vectors()
-# TODO: test dataset loading, get recs super and LSI (implement build user)
-train, valid, test = Utils.load_dataset()
-recs = lsiModel.get_recs(users, user_hist, 2)
-print(recs)
+print("splitting dataset")
+train, valid, test = Utils.load_dataset(lsiModel.item_vectors.keys())
+print("computing user vectors")
+lsiModel.build_users(train)
+print("getting recommendations")
+# TODO : use something other than brute force, complete metrics and test both
+recs = lsiModel.get_recs(train)
+print(recs['4855132'])
