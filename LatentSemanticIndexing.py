@@ -1,9 +1,9 @@
 from KNearestNeighborsRec import KNearestNeighborsRecModel
 from gensim.models import LsiModel
 from scipy.spatial.distance import cosine
-from numpy import zeros
-from numpy.linalg import norm
+import numpy as np
 import Utils
+
 
 class LatentSemanticIndexingModel(KNearestNeighborsRecModel):
     def __init__(self, vector_size = 100, k = 5):
@@ -39,7 +39,7 @@ class LatentSemanticIndexingModel(KNearestNeighborsRecModel):
             if len(sparse_vec) > 0:
                 self.item_vectors[song_id] = Utils.sparse_to_dense(sparse_vec, self.vector_size, norm=True)
 
-    def get_recs(self, user_history):
+    def get_recs_user_vectors(self, user_history):
         """ generates k recommendations for every vector based on cosine similarity
         Parameters
         ----------
@@ -55,7 +55,7 @@ class LatentSemanticIndexingModel(KNearestNeighborsRecModel):
             user_recs[user] = self._get_recs_user(vector, user_history[user])
         return user_recs
 
-    def _get_recs_user(self, user_vector, history):
+    def _get_recs_user_vector(self, user_vector, history):
         """ generates k recommendations for a single vector
         overrides super method, as super assumes query vector is in training set, so precomputes similarity
         Parameters
@@ -81,11 +81,12 @@ class LatentSemanticIndexingModel(KNearestNeighborsRecModel):
             train : dict, (user_id => training items)
         """
         for user, history in train.items():
-            user_vec = zeros(self.vector_size)
+            user_vec = np.zeros(self.vector_size)
             for song_id in history:
                 user_vec += self.item_vectors[song_id]
-            norm_value = norm(user_vec)
+            norm_value = np.linalg.norm(user_vec)
             self.user_vectors[user] = user_vec / norm_value
+
 
 lsiModel = LatentSemanticIndexingModel(vector_size=100, k=10)
 print("computing item vectors")
@@ -95,6 +96,6 @@ train, valid, test = Utils.load_dataset(lsiModel.item_vectors.keys())
 print("computing user vectors")
 lsiModel.build_users(train)
 print("getting recommendations")
-# TODO : use something other than brute force, complete metrics and test both
+# TODO : use something other than brute force
 recs = lsiModel.get_recs(train)
 print(recs['4855132'])

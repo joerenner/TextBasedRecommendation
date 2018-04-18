@@ -1,6 +1,7 @@
 from scipy.spatial.distance import cosine
 
-class KNearestNeighborsRecModel():
+
+class KNearestNeighborsRecModel:
     """
         Attributes:
         ----------
