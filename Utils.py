@@ -45,7 +45,7 @@ def build_coevent_dict(train):
         hist_len = len(history)
         if hist_len > 1:
             for i in range(1, hist_len):
-                coevents = append_to_value_set(history[i-1],history[i],coevents)
+                coevents = append_to_value_set(history[i-1], history[i], coevents)
     return coevents
 
 def build_tag_vectors(tag_directory_path):
@@ -113,7 +113,7 @@ def compute_cold_start_metrics(recs, train, test):
     nDCG = 0.0
     coevents = build_coevent_dict(train)
     for user, rec_items in recs.items():
-        if not test[user] in coevents[train[user][:-1][0]]:
+        if not test[user] in coevents[train[user][-1:][0]]:
             if test[user] in rec_items:
                 hit_rate += 1.0 / k
                 nDCG += 1.0 / np.log2(rec_items.index(test[user]) + 2)
@@ -155,7 +155,7 @@ def insert_song_into_history(song, history, valid_songs):
         -------
             history : list, updated listening history
     """
-    if valid_songs == None or song in valid_songs:
+    if not valid_songs or song in valid_songs:
         history.append(song)
     return history
 
