@@ -2,6 +2,9 @@ from gensim.corpora import Dictionary
 from gensim.models import TfidfModel
 from os import listdir
 import numpy as np
+from keras.layers import Embedding, Input, Reshape, Dense, concatenate
+from keras import Model
+import pickle
 
 
 def add_to_dictionary(d, tuple):
@@ -47,6 +50,60 @@ def build_coevent_dict(train):
             for i in range(1, hist_len):
                 coevents = append_to_value_set(history[i-1], history[i], coevents)
     return coevents
+
+def build_embeddings_model(vocab_size, vector_size):
+    """ Initializes, compiles and returns embeddings neural net
+        Parameters
+        ---------
+            vocab_size : int, number of input vocabulary
+            vector_size : int, embedding layer size
+        Returns
+        -------
+            model: Keras model
+    """
+    # model initialization
+    input_target = Input((1,))
+    input_context = Input((1,))
+    embedding = Embedding(vocab_size, vector_size, input_length=1, name='embedding')
+    # look up the embedding
+    target = embedding(input_target)
+    target = Reshape((vector_size, 1))(target)
+    context = embedding(input_context)
+    context = Reshape((vector_size, 1))(context)
+    # dot product operation to get a similarity measure
+    dot_product = concatenate([target, context], mode='dot', dot_axes=1)
+    dot_product = Reshape((1,))(dot_product)
+    # add the sigmoid output layer
+    output = Dense(1, activation='sigmoid')(dot_product)
+    # create the primary training model
+    model = Model(output=output, input=[input_target, input_context])
+    model.compile(loss='binary_crossentropy', optimizer='rmsprop')
+    return model
+
+def build_item_indices(train_seqs_list, id_index_dict_file):
+    """ maps items to integers and returns dictionary and reverse dict for lookup
+        Parameters
+        ----------
+            train_seqs : list of sequence lists
+            id_index_dict_file : id_index_dict_file : str, name of pickle file for id_index dict, if None, construct new
+        Returns
+        -------
+            id_index_dict : dict (item_id => index)
+            index_id_dict : dict (index => item_id)
+    """
+    if id_index_dict_file:
+        with open(id_index_dict_file, 'rb') as f:
+            pickle.load(f)
+    else:
+        id_index_dict = {}
+        item_ids = list(set([item for sublist in train_seqs_list for item in sublist]))
+        for item_id in item_ids:
+            index = len(id_index_dict)
+            id_index_dict[item_id] = index
+        with open('id_index_file' + '.pkl', 'wb') as f:
+            pickle.dump(id_index_dict, f)
+    index_id_dict = dict(zip(id_index_dict.values(), id_index_dict.keys()))
+    return id_index_dict, index_id_dict
 
 def build_tag_vectors(tag_directory_path):
     """Loads tag files, builds sparse vectors for each song

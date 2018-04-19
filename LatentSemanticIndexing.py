@@ -1,12 +1,11 @@
 from KNearestNeighborsRec import KNearestNeighborsRecModel
 from gensim.models import LsiModel
-from scipy.spatial.distance import cosine
 import numpy as np
 import Utils
 
 
 class LatentSemanticIndexingModel(KNearestNeighborsRecModel):
-    def __init__(self, vector_size = 100, k = 5):
+    def __init__(self, vector_size=100):
         """ initializes LSI recommendation model
             Parameters
             ----------
@@ -22,7 +21,6 @@ class LatentSemanticIndexingModel(KNearestNeighborsRecModel):
                 lsi_model : gensim lsi model (for transforming songs not in original training) 
         """
         self.vector_size = vector_size
-        self.k = k
         self.item_vectors = {}
         self.user_vectors = {}
         self.tag_dict = {}
@@ -39,41 +37,6 @@ class LatentSemanticIndexingModel(KNearestNeighborsRecModel):
             if len(sparse_vec) > 0:
                 self.item_vectors[song_id] = Utils.sparse_to_dense(sparse_vec, self.vector_size, norm=True)
 
-    def get_recs_user_vectors(self, user_history):
-        """ generates k recommendations for every vector based on cosine similarity
-        Parameters
-        ----------
-            user_vectors : dict, (user_id => user_vector)
-            user_history : dict, (user_id => list of songs in listening history), to filter recommendations
-            k : int, length of list of ranked recs for each query
-        Returns 
-        -------
-            user_recs : dict, (user_id => list of ranked song recommendation ids)
-        """
-        user_recs = {}
-        for user, vector in self.user_vectors.items():
-            user_recs[user] = self._get_recs_user(vector, user_history[user])
-        return user_recs
-
-    def _get_recs_user_vector(self, user_vector, history):
-        """ generates k recommendations for a single vector
-        overrides super method, as super assumes query vector is in training set, so precomputes similarity
-        Parameters
-        ----------
-            user_vector : list, dense vector
-            user_history : list, (user_id => list of songs in listening history), to filter recommendations
-        Returns 
-        -------
-            user_recs : ranked list of song recommendation ids
-        """
-        recommendations = []
-        rec_length = 0
-        for song_id, song_vector in self.item_vectors.items():
-            if song_id not in history:
-                sim = 1.0 - cosine(song_vector, user_vector)
-                recommendations = self._insert_song_into_recs(song_id, sim, rec_length, recommendations)
-        return recommendations
-
     def build_users(self, train):
         """ builds a user vector by summing the item vectors in user's training set and normalizing to unit length
         Parameters
@@ -88,13 +51,19 @@ class LatentSemanticIndexingModel(KNearestNeighborsRecModel):
             self.user_vectors[user] = user_vec / norm_value
 
 
-lsiModel = LatentSemanticIndexingModel(vector_size=100, k=10)
+lsiModel = LatentSemanticIndexingModel(vector_size=100)
 print("computing item vectors")
 lsiModel.compute_vectors()
 print("splitting dataset")
 train, valid, test = Utils.load_dataset(lsiModel.item_vectors.keys())
-print(len(lsiModel.item_vectors))
+print(str(len(lsiModel.item_vectors)) + " items")
+print(str(len(test)) + " users")
 print("getting recommendations")
-# TODO : use something other than brute force (parallelize similarity matrix, or ball tree)
-recs = lsiModel.get_recs(train)
-print(recs['4855132'])
+recs = lsiModel.get_recs(train, k=10)
+print("computing metrics")
+hr, ndcg = Utils.compute_metrics(recs, valid)
+hr_cs, ndcg_cs = Utils.compute_metrics(recs, test)
+print(hr)
+print(ndcg)
+print(hr_cs)
+print(ndcg_cs)

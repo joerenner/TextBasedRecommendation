@@ -8,8 +8,7 @@ class KNearestNeighborsRecModel:
             item_vectors : dict (song_id => vector)
             k : number of recommendations per user
     """
-
-    def get_recs(self, user_history):
+    def get_recs(self, user_history, k):
         """ generates k recommendations for every vector based on cosine similarity
         Parameters
         ----------
@@ -27,10 +26,9 @@ class KNearestNeighborsRecModel:
         tree = BallTree(X, leaf_size=40)
         user_recs = {}
         for user, song_ids in user_history.items():
-            print([id_index_list[user_history[user][-1:][0]]])
-            recs_ind = tree.query([id_index_list[user_history[user][-1:][0]]], k=self.k) # TODO: look up query docs, fix this line
+            _, recs_ind = tree.query([self.item_vectors[user_history[user][-1:][0]]], k=k)
             recs = []
-            for i in recs_ind:
+            for i in recs_ind[0]:
                 recs.append(ids[i])
             user_recs[user] = recs
         return user_recs
