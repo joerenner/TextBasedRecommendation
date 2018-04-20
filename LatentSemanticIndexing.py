@@ -28,7 +28,9 @@ class LatentSemanticIndexingModel(KNearestNeighborsRecModel):
         self.lsi_model = {}
 
     def compute_vectors(self):
-        """ build sparse vectors, computes tfidf matrix, performs svd, saves low rank vectors """
+        """ build sparse vectors, computes tfidf matrix, performs svd, saves low rank vectors
+            saves tag_dict, tfidf_model, lsi_model, and item_vectors to object
+        """
         id_vec_mapping, self.tag_dict = Utils.build_tag_vectors("KGRec-dataset/KGRec-dataset/KGRec-music/tags")
         id_vec_mapping, self.tfidf_model = Utils.build_tfidf_vectors(id_vec_mapping)
         self.lsi_model = LsiModel(id_vec_mapping.values(), id2word=self.tag_dict, num_topics=self.vector_size)
@@ -51,7 +53,7 @@ class LatentSemanticIndexingModel(KNearestNeighborsRecModel):
             self.user_vectors[user] = user_vec / norm_value
 
 
-lsiModel = LatentSemanticIndexingModel(vector_size=100)
+lsiModel = LatentSemanticIndexingModel(vector_size=50)
 print("computing item vectors")
 lsiModel.compute_vectors()
 print("splitting dataset")
@@ -62,7 +64,7 @@ print("getting recommendations")
 recs = lsiModel.get_recs(train, k=10)
 print("computing metrics")
 hr, ndcg = Utils.compute_metrics(recs, valid)
-hr_cs, ndcg_cs = Utils.compute_metrics(recs, test)
+hr_cs, ndcg_cs = Utils.compute_cold_start_metrics(recs, train, test)
 print(hr)
 print(ndcg)
 print(hr_cs)

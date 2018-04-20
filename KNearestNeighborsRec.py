@@ -6,13 +6,13 @@ class KNearestNeighborsRecModel:
         Attributes (implemented in subclasses):
         ----------
             item_vectors : dict (song_id => vector)
-            k : number of recommendations per user
     """
     def get_recs(self, user_history, k):
         """ generates k recommendations for every vector based on cosine similarity
         Parameters
         ----------
             user_history : dict, (user_id => list of songs in listening history), to filter recommendations
+            k : int, number of recommendations to make per user
         Returns 
         -------
             user_recs : dict, (user_id => list of ranked song recommendation ids)

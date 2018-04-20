@@ -2,7 +2,7 @@ from gensim.corpora import Dictionary
 from gensim.models import TfidfModel
 from os import listdir
 import numpy as np
-from keras.layers import Embedding, Input, Reshape, Dense, concatenate
+from keras.layers import Embedding, Input, Reshape, Dense, Dot
 from keras import Model
 import pickle
 
@@ -16,6 +16,7 @@ def add_to_dictionary(d, tuple):
     """
     if tuple[0] not in d:
         d[tuple[0]] = tuple[1]
+
 
 def append_to_value_set(key, value, d):
     """ adds a value to a key set in a dict, or adds the key, set(value]) to the dict if key not in dict
@@ -34,6 +35,7 @@ def append_to_value_set(key, value, d):
         d[key] = set(value)
     return d
 
+
 def build_coevent_dict(train):
     """ builds a coevent dict for items (for use when computing cold start metrics)
         Parameters
@@ -50,6 +52,7 @@ def build_coevent_dict(train):
             for i in range(1, hist_len):
                 coevents = append_to_value_set(history[i-1], history[i], coevents)
     return coevents
+
 
 def build_embeddings_model(vocab_size, vector_size):
     """ Initializes, compiles and returns embeddings neural net
@@ -71,7 +74,7 @@ def build_embeddings_model(vocab_size, vector_size):
     context = embedding(input_context)
     context = Reshape((vector_size, 1))(context)
     # dot product operation to get a similarity measure
-    dot_product = concatenate([target, context], mode='dot', dot_axes=1)
+    dot_product = Dot(axes=1)([target, context])
     dot_product = Reshape((1,))(dot_product)
     # add the sigmoid output layer
     output = Dense(1, activation='sigmoid')(dot_product)
@@ -79,6 +82,7 @@ def build_embeddings_model(vocab_size, vector_size):
     model = Model(output=output, input=[input_target, input_context])
     model.compile(loss='binary_crossentropy', optimizer='rmsprop')
     return model
+
 
 def build_item_indices(train_seqs_list, id_index_dict_file):
     """ maps items to integers and returns dictionary and reverse dict for lookup
@@ -93,7 +97,7 @@ def build_item_indices(train_seqs_list, id_index_dict_file):
     """
     if id_index_dict_file:
         with open(id_index_dict_file, 'rb') as f:
-            pickle.load(f)
+            id_index_dict = pickle.load(f)
     else:
         id_index_dict = {}
         item_ids = list(set([item for sublist in train_seqs_list for item in sublist]))
@@ -104,6 +108,7 @@ def build_item_indices(train_seqs_list, id_index_dict_file):
             pickle.dump(id_index_dict, f)
     index_id_dict = dict(zip(id_index_dict.values(), id_index_dict.keys()))
     return id_index_dict, index_id_dict
+
 
 def build_tag_vectors(tag_directory_path):
     """Loads tag files, builds sparse vectors for each song
@@ -122,7 +127,7 @@ def build_tag_vectors(tag_directory_path):
             tokens = tags.read().split(sep=' ')
             lengths.append(len(tokens))
             dictionary.add_documents([tokens])
-    dictionary.filter_extremes(no_below=2)
+    dictionary.filter_extremes(no_below=2, no_above=0.5)
     dictionary.compactify()
     id_vec_mapping = {}
     for f in listdir(tag_directory_path):
@@ -130,9 +135,10 @@ def build_tag_vectors(tag_directory_path):
         with open(tag_directory_path+"/"+f, 'r') as tags:
             tokens = tags.read().split(sep=' ')
         lengths.append(len(tokens))
-        sparseVec = dictionary.doc2bow(tokens)
-        add_to_dictionary(id_vec_mapping, (song_id, sparseVec))
+        sparse_vec = dictionary.doc2bow(tokens)
+        add_to_dictionary(id_vec_mapping, (song_id, sparse_vec))
     return id_vec_mapping, dictionary
+
 
 def build_tfidf_vectors(id_vec_mapping):
     """ builds tfidf model, transforms sparse vectors tfidf vectors
@@ -148,6 +154,7 @@ def build_tfidf_vectors(id_vec_mapping):
         id_vec_mapping[id] = tfidf[vec]
     return id_vec_mapping, tfidf
 
+# TODO: fix to match window size!
 def compute_cold_start_metrics(recs, train, test):
     """ computes hit rate, nDCG for recommendations for query => next pairs unseen in training set
         Parameters
@@ -176,6 +183,7 @@ def compute_cold_start_metrics(recs, train, test):
                 nDCG += 1.0 / np.log2(rec_items.index(test[user]) + 2)
     return hit_rate / num_users, nDCG / num_users
 
+
 def compute_metrics(recs, test):
     """ computes hit rate, nDCG for recommendations
         Parameters
@@ -201,6 +209,7 @@ def compute_metrics(recs, test):
             nDCG += 1.0 / np.log2(rec_items.index(test[user]) + 2)
     return hit_rate / num_users, nDCG / num_users
 
+
 def insert_song_into_history(song, history, valid_songs):
     """ helper function to insert song, if valid, into listening history
         Parameters
@@ -215,6 +224,7 @@ def insert_song_into_history(song, history, valid_songs):
     if not valid_songs or song in valid_songs:
         history.append(song)
     return history
+
 
 def load_dataset(valid_songs=None):
     """ Loads data into training, validation, test sets.
@@ -251,6 +261,7 @@ def load_dataset(valid_songs=None):
             else:
                 current_user_data = insert_song_into_history(tokens[1], current_user_data, valid_songs)
     return train, validation, test
+
 
 def sparse_to_dense(sparse_vector, size, norm = False):
     """ turns sparse vector into dense
