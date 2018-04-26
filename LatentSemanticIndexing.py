@@ -53,7 +53,7 @@ class LatentSemanticIndexingModel(KNearestNeighborsRecModel):
             self.user_vectors[user] = user_vec / norm_value
 
 
-lsiModel = LatentSemanticIndexingModel(vector_size=50)
+lsiModel = LatentSemanticIndexingModel(vector_size=100)
 print("computing item vectors")
 lsiModel.compute_vectors()
 print("splitting dataset")

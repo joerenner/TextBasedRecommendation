@@ -36,11 +36,12 @@ def append_to_value_set(key, value, d):
     return d
 
 
-def build_coevent_dict(train):
+def build_coevent_dict(train, window_size):
     """ builds a coevent dict for items (for use when computing cold start metrics)
         Parameters
         ----------
             train : dict, (userID => list of songid listened to)
+            window_size : int, window size for training, (to know which pairs have been used for training)
         Returns
         -------
             coevents : dict, (songId => list of songIds that come after key in a listening history)
@@ -48,9 +49,10 @@ def build_coevent_dict(train):
     coevents = {}
     for _, history in train.items():
         hist_len = len(history)
-        if hist_len > 1:
-            for i in range(1, hist_len):
-                coevents = append_to_value_set(history[i-1], history[i], coevents)
+        for i in range(hist_len):
+            for j in range(max(0, i-window_size), min(hist_len, i+window_size)):
+                if i != j:
+                    coevents = append_to_value_set(history[i], history[j], coevents)
     return coevents
 
 
@@ -117,15 +119,13 @@ def build_tag_vectors(tag_directory_path):
             tag_directory_path : String, path of directory containing tags
         Returns
         -------
-            id_vec_mapping : dict (song id => vector)
+            id_vec_mapping : dict (song id => list[tuple(tagId count)])
             dictionary : gensim Dictionary containing all tags and ids
     """
     dictionary = Dictionary()
-    lengths = []
     for f in listdir(tag_directory_path):
         with open(tag_directory_path+"/"+f, 'r') as tags:
             tokens = tags.read().split(sep=' ')
-            lengths.append(len(tokens))
             dictionary.add_documents([tokens])
     dictionary.filter_extremes(no_below=2, no_above=0.5)
     dictionary.compactify()
@@ -134,7 +134,6 @@ def build_tag_vectors(tag_directory_path):
         song_id = f[0:-4]
         with open(tag_directory_path+"/"+f, 'r') as tags:
             tokens = tags.read().split(sep=' ')
-        lengths.append(len(tokens))
         sparse_vec = dictionary.doc2bow(tokens)
         add_to_dictionary(id_vec_mapping, (song_id, sparse_vec))
     return id_vec_mapping, dictionary
@@ -154,14 +153,15 @@ def build_tfidf_vectors(id_vec_mapping):
         id_vec_mapping[id] = tfidf[vec]
     return id_vec_mapping, tfidf
 
-# TODO: fix to match window size!
-def compute_cold_start_metrics(recs, train, test):
+
+def compute_cold_start_metrics(recs, train, test, window_size=1):
     """ computes hit rate, nDCG for recommendations for query => next pairs unseen in training set
         Parameters
         ----------
             recs : dict, (userID => list of recommendations)
             train : dict, (userID => training items)
             test : dict, dict (userID => next songID)
+            window_size : int, window size used for training, for P2V = 5, else = 1
         Returns
         -------
             hit_rate : float, number of hits divided by K (1/K if next song is in recommendations)
@@ -171,11 +171,11 @@ def compute_cold_start_metrics(recs, train, test):
         -----
             Since we are only predicting the next event, (only one target item) the ideal DCG = 1: (2^1 - 1)/log(1+1)
     """
-    k = float(len(list(recs.values())))
+    k = float(len(list(recs.values())[0]))
     num_users = len(list(recs.keys()))
     hit_rate = 0.0
     nDCG = 0.0
-    coevents = build_coevent_dict(train)
+    coevents = build_coevent_dict(train, window_size)
     for user, rec_items in recs.items():
         if not test[user] in coevents[train[user][-1:][0]]:
             if test[user] in rec_items:
@@ -199,7 +199,7 @@ def compute_metrics(recs, test):
         -----
             Since we are only predicting the next event, (only one target item) the ideal DCG = 1: (2^1 - 1)/log(1+1)
     """
-    k = float(len(list(recs.values())))
+    k = float(len(list(recs.values())[0]))
     num_users = len(list(recs.keys()))
     hit_rate = 0.0
     nDCG = 0.0

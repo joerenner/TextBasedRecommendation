@@ -20,16 +20,18 @@ class KNearestNeighborsRecModel:
         X = list(self.item_vectors.values())
         ids = list(self.item_vectors.keys())
         id_index_list = {}
-        num_users = len(ids)
-        for i in range(num_users):
+        num_items = len(ids)
+        for i in range(num_items):
             id_index_list[ids[i]] = i
         tree = BallTree(X, leaf_size=40)
         user_recs = {}
         for user, song_ids in user_history.items():
-            _, recs_ind = tree.query([self.item_vectors[user_history[user][-1:][0]]], k=k)
+            _, recs_ind = tree.query([self.item_vectors[song_ids[-1:][0]]], k=k+len(song_ids))
             recs = []
             for i in recs_ind[0]:
-                recs.append(ids[i])
-            user_recs[user] = recs
+                # filter items in user history
+                if ids[i] not in song_ids:
+                    recs.append(ids[i])
+            user_recs[user] = recs[:k]
         return user_recs
 
