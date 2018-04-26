@@ -83,7 +83,7 @@ class Prod2VecModel(KNearestNeighborsRecModel, ToVecTrainerModel):
 train, valid, test = Utils.load_dataset()
 print("loading embeddings")
 p2v_model = Prod2VecModel(vector_size=25)
-with open("p2v_embeddings25.txt", 'r') as f:
+with open("p2v_embeddings50.txt", 'r') as f:
     for line in f:
         item_id = line[line.index("(")+2:line.index(",")-1]
         vector = line[line.index("[")+1:-3].split(",")
