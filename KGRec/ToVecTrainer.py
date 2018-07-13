@@ -1,6 +1,6 @@
 import numpy as np
 from keras.models import load_model
-import Utils
+from KGRec import Utils
 
 
 class ToVecTrainerModel:
