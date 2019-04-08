@@ -250,7 +250,7 @@ def compute_cold_start_metrics(recs, train, test, window_size=1):
     num_users = len(list(recs.keys()))
     hit_rate = 0.0
     nDCG = 0.0
-    coevents = build_coevent_dict(train, 5)
+    coevents = build_coevent_dict(train, window_size)
     for user, rec_items in recs.items():
         if train[user][-1:][0] in coevents:
             if not test[user] in coevents[train[user][-1:][0]]:
