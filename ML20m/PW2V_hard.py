@@ -65,7 +65,7 @@ def generate_batch(batch_size, window_size):
                             user_index += 1
                             if user_index == len(movies_train):
                                 user_index = 0
-                            return batch_words, labels_words
+                            return batch_words, labels_words, batch_movie_words, labels_movie_words
         user_index += 1
         if user_index == len(movies_train):
             user_index = 0
@@ -125,8 +125,8 @@ with tf.Session(graph=graph) as session:
     print('graph initialized')
     average_loss = 0
     for step in range(num_steps):
-        batch_words, labels_words = generate_batch(batch_size, window_size)
-        feed_dict = {train_word_inputs: batch_words, train_word_labels: labels_words}
+        batch_words, labels_words, batch_movies, labels_movies = generate_batch(batch_size, window_size)
+        feed_dict = {train_word_inputs: batch_words, train_word_labels: labels_words, train_movie_inputs: batch_movies, train_movie_labels: labels_movies}
 
         _, summary, loss_val = session.run(
             [optimizer, merged, loss],
