@@ -23,21 +23,21 @@ class ContentEmbToRec(KNearestNeighborsRecModel):
 
 
 words = True
-weights = True
+weights = False
 print("loading data...")
-train, train_sets, test = data_processing.load_data(validation=True)
+train, train_sets, test = data_processing.load_data(validation=False)
 movie_tags = None
 if words:
     movie_tags, vocab = data_processing.load_tags(train_sets, min_count=2)
     train, test = data_processing.filter_movies_with_no_tags(train, test, movie_tags)
 if weights:
-    weights = data_processing.load_word_weights("embeddings/PW2VXT_weights200_1_20_0.5.txt")
+    weights = data_processing.load_word_weights("embeddings/PW2V_200_2_20_01_test.txt")
 print("getting recs...")
-word_embed_to_recs = ContentEmbToRec("embeddings/PW2VXT_200_1_20_0.5.txt", 200, movie_tags, weights, words)
+word_embed_to_recs = ContentEmbToRec("embeddings/PW2V_200_2_20_01_test.txt", 200, movie_tags, "tfidf", words)
 recs = word_embed_to_recs.get_recs(train, 10)
 hr, ndcg = data_processing.compute_metrics(recs, test)
 print(hr)
 print(ndcg)
-cs_hr, cs_ndcg = data_processing.compute_cold_start_metrics(recs, train, test, window_size=1)
+cs_hr, cs_ndcg = data_processing.compute_cold_start_metrics(recs, train, test, window_size=2)
 print(cs_hr)
 print(cs_ndcg)
