@@ -20,6 +20,9 @@ print("loading data...")
 train, train_sets, test = load_data(validation=False)
 # movie_tags: {movieID (str)=>tagId (str), loads tags (if in user-movie combo is in train set), includes genres as tags
 movie_tags, vocab = load_tags(train_sets, min_count=2)
+
+movie_tags_ragged = tf.raged.constant(...)
+
 train, test = filter_movies_with_no_tags(train, test, movie_tags)
 del train_sets
 movies_train = list(train.values())
@@ -70,6 +73,9 @@ def generate_batch(batch_size, window_size):
         if user_index == len(movies_train):
             user_index = 0
 
+# main params
+lambda_hard = 0.5
+
 # Model definition
 graph = tf.Graph()
 with graph.as_default():
@@ -104,9 +110,24 @@ with graph.as_default():
             num_sampled=neg_samples,
             num_classes=vocab_size)
 
-    movie_loss =
+    # todo: build hard-coded movie_tags matrix once and for all
 
-    loss = tf.reduce_mean(tag_loss + movie_loss)
+    nce_movie_weights = tf.ragged.map_flat_values (tf.nn.embedding_lookup, movie_tags_ragged, nce_word_weights)
+
+    movie_embed = tf.ragged.map_flat_values (tf.nn.embedding_lookup, movie_tags_ragged, word_embed)
+
+    nce_movie_biases = tf.Variable(tf.zeros([num_movies]))
+
+    movie_loss = tf.nn.nce_loss(
+            weights=nce_movie_weights,
+            biases=nce_movie_biases,
+            labels=train_movie_labels,
+            inputs=movie_embed,
+            num_sampled=neg_samples,
+            num_classes=num_movies)
+
+    loss = tf.reduce_mean(tag_loss + lambda_hard * movie_loss)
+
     tf.summary.scalar('loss', loss)
 
     optimizer = tf.train.GradientDescentOptimizer(learn_rate).minimize(loss)
