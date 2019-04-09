@@ -38,7 +38,7 @@ recs = lsi_model.get_recs(train, 10)
 hr, ndcg = data_processing.compute_metrics(recs, test)
 print(hr)
 print(ndcg)
-cs_hr, cs_ndcg = data_processing.compute_cold_start_metrics(recs, train, test, window_size=1)
+cs_hr, cs_ndcg = data_processing.compute_cold_start_metrics(recs, train, test, window_size=2)
 print(cs_hr)
 print(cs_ndcg)
 
