@@ -20,8 +20,7 @@ print("loading data...")
 train, train_sets, test = load_data(validation=False)
 # movie_tags: {movieID (str)=>tagId (str), loads tags (if in user-movie combo is in train set), includes genres as tags
 movie_tags, vocab = load_tags(train_sets, min_count=2)
-
-movie_tags_ragged = tf.raged.constant(...)
+print("done")
 
 train, test = filter_movies_with_no_tags(train, test, movie_tags)
 del train_sets
@@ -33,7 +32,7 @@ num_movies = len(list(movie_tags.keys()))
 
 # build tag => index dictionary and reverse dictionary
 tag_dictionary, tag_reversed_dictionary = build_index_dictionary(vocab)
-del vocab
+#del vocab
 print("building graph...")
 user_index = 0  # where to start generating batch from
 tag_index = 0
@@ -74,11 +73,23 @@ def generate_batch(batch_size, window_size):
             user_index = 0
 
 # main params
-lambda_hard = 0.5
+lambda_hard = 1
 
 # Model definition
 graph = tf.Graph()
 with graph.as_default():
+    # build ragged movie tags
+    inv_vocab = {}
+    for i, word in enumerate(vocab):
+        inv_vocab[word]=i
+    a=[]
+    b=[]
+    for movie,tags in movie_tags.items():
+        for tag in tags:
+            a.append(int(movie))
+            b.append(inv_vocab[tag])
+    movie_tags_ragged = tf.RaggedTensor.from_value_rowids(values=b,value_rowids=a)
+
     # word input data
     train_word_inputs = tf.placeholder(tf.int32, shape=[batch_size])
     train_word_labels = tf.placeholder(tf.int32, shape=[batch_size, 1])
@@ -95,8 +106,8 @@ with graph.as_default():
 
     # movie embeddings
     # tf.nn.embedding_lookup(word_embeddings, train_movie_inputs) produces shape: (batch_size, None (number of tags for movie), embedding size)
-    movie_input = tf.reduce_mean(tf.nn.embedding_lookup(word_embeddings, train_movie_inputs), 1)
-    movie_label = tf.reduce_mean(tf.nn.embedding_lookup(word_embeddings, train_movie_labels), 1)
+    #movie_input = tf.reduce_mean(tf.nn.embedding_lookup(word_embeddings, train_movie_inputs), 1)
+    #movie_label = tf.reduce_mean(tf.nn.embedding_lookup(word_embeddings, train_movie_labels), 1)
 
     nce_word_weights = tf.Variable(tf.truncated_normal([vocab_size, embedding_size],
                                                        stddev=1.0 / math.sqrt(embedding_size)))
@@ -110,11 +121,11 @@ with graph.as_default():
             num_sampled=neg_samples,
             num_classes=vocab_size)
 
-    # todo: build hard-coded movie_tags matrix once and for all
+    # entering movie loss
 
-    nce_movie_weights = tf.ragged.map_flat_values (tf.nn.embedding_lookup, movie_tags_ragged, nce_word_weights)
+    nce_movie_weights = tf.ragged.map_flat_values (tf.nn.embedding_lookup, nce_word_weights, movie_tags_ragged)
 
-    movie_embed = tf.ragged.map_flat_values (tf.nn.embedding_lookup, movie_tags_ragged, word_embed)
+    movie_embed = tf.ragged.map_flat_values (tf.nn.embedding_lookup, word_embed, movie_tags_ragged)
 
     nce_movie_biases = tf.Variable(tf.zeros([num_movies]))
 
