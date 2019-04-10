@@ -1,4 +1,4 @@
-from data_processing import load_data, load_tags, filter_movies_with_no_tags, build_index_dictionary
+from data_processing import load_data, load_tags, filter_movies_with_no_tags, build_index_dictionary, get_movie_vocab
 import random
 import math
 import os
@@ -23,7 +23,6 @@ movie_tags, vocab = load_tags(train_sets, min_count=2)
 print("done")
 
 train, test = filter_movies_with_no_tags(train, test, movie_tags)
-del train_sets
 movies_train = list(train.values())
 movie_tags_list = list(movie_tags.values())
 vocab_size = len(vocab)
@@ -32,6 +31,10 @@ num_movies = len(list(movie_tags.keys()))
 
 # build tag => index dictionary and reverse dictionary
 tag_dictionary, tag_reversed_dictionary = build_index_dictionary(vocab)
+movie_vocab = get_movie_vocab(train)
+movie_dictionary, movie_reversed_dictionary = build_index_dictionary(list(movie_vocab))
+del train_sets
+
 #del vocab
 print("building graph...")
 user_index = 0  # where to start generating batch from
@@ -79,15 +82,12 @@ lambda_hard = 1
 graph = tf.Graph()
 with graph.as_default():
     # build ragged movie tags
-    inv_vocab = {}
-    for i, word in enumerate(vocab):
-        inv_vocab[word]=i
     a=[]
     b=[]
     for movie,tags in movie_tags.items():
         for tag in tags:
-            a.append(int(movie))
-            b.append(inv_vocab[tag])
+            a.append(movie_dictionary[movie])
+            b.append(tag_dictionary[tag])
     movie_tags_ragged = tf.RaggedTensor.from_value_rowids(values=b,value_rowids=a)
 
     # word input data
@@ -123,9 +123,9 @@ with graph.as_default():
 
     # entering movie loss
 
-    nce_movie_weights = tf.ragged.map_flat_values (tf.nn.embedding_lookup, nce_word_weights, movie_tags_ragged)
+    nce_movie_weights = tf.reduce_mean (tf.ragged.map_flat_values (tf.nn.embedding_lookup, nce_word_weights, movie_tags_ragged), 1)
 
-    movie_embed = tf.ragged.map_flat_values (tf.nn.embedding_lookup, word_embed, movie_tags_ragged)
+    movie_embed = tf.reduce_mean (tf.ragged.map_flat_values (tf.nn.embedding_lookup, word_embed, movie_tags_ragged), 1)
 
     nce_movie_biases = tf.Variable(tf.zeros([num_movies]))
 
