@@ -31,7 +31,7 @@ num_movies = len(list(movie_tags.keys()))
 
 # build tag => index dictionary and reverse dictionary
 tag_dictionary, tag_reversed_dictionary = build_index_dictionary(vocab)
-movie_vocab = get_movie_vocab(train)
+movie_vocab = movie_tags.keys() # TODO: please confirm that we should not use this: get_movie_vocab(train) (I get missing keys if I do)
 movie_dictionary, movie_reversed_dictionary = build_index_dictionary(list(movie_vocab))
 del train_sets
 
