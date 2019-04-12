@@ -113,8 +113,8 @@ def filter_movies_with_no_tags(train, test, movie_tags):
 
 def build_index_dictionary(vocab):
     dictionary = dict()
-    for word in vocab:
-        dictionary[word] = len(dictionary)
+    for i, word in enumerate(vocab):
+        dictionary[word] = i
     reversed_dictionary = dict(zip(dictionary.values(), dictionary.keys()))
     return dictionary, reversed_dictionary
 
