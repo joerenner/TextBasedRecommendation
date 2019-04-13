@@ -5,13 +5,16 @@ import os
 import numpy as np
 import tensorflow as tf
 
+os.environ["CUDA_VISIBLE_DEVICES"] = "1"
+
 # Parameters
-batch_size = 16
+batch_size = 128
 embedding_size = 200
 window_size = 2
 neg_samples = 20
 learn_rate = 0.1
 num_steps = 500001
+alternate_losses_step = 100
 
 # Data Loading
 print("loading data...")
@@ -144,11 +147,14 @@ with graph.as_default():
         num_sampled=neg_samples,
         num_classes=num_movies)
 
-    loss = tf.reduce_mean(tag_loss + lambda_hard * movie_loss)
+    tag_loss = tf.reduce_mean(tag_loss)
+    movie_loss = tf.reduce_mean(movie_loss)
 
-    tf.summary.scalar('loss', loss)
+    tf.summary.scalar('tag_loss', tag_loss)
+    tf.summary.scalar('movie_loss', tag_loss)
 
-    optimizer = tf.train.GradientDescentOptimizer(learn_rate).minimize(loss)
+    optimizer1 = tf.train.GradientDescentOptimizer(learn_rate).minimize(tag_loss)
+    optimizer2 = tf.train.GradientDescentOptimizer(learn_rate).minimize(movie_loss)
 
     norm = tf.sqrt(tf.reduce_sum(tf.square(word_embeddings), 1, keepdims=True))
     normalized_embeddings = word_embeddings / norm
@@ -157,11 +163,16 @@ with graph.as_default():
     init = tf.global_variables_initializer()
     saver = tf.train.Saver()
 
+n_cpus = 16
+
 with tf.Session(graph=graph) as session:
     writer = tf.summary.FileWriter("tf_events", session.graph)
     init.run()
     print('graph initialized')
-    average_loss = 0
+    average_loss_tag = 0
+    average_loss_movie = 0
+
+    report_every_steps = 100
     for step in range(num_steps):
         batch_words, labels_words, batch_movies, labels_movies = generate_batch(batch_size, window_size)
         feed_dict = {train_word_inputs: batch_words,
@@ -169,19 +180,30 @@ with tf.Session(graph=graph) as session:
                      train_movie_inputs: batch_movies,
                      train_movie_labels: labels_movies}
 
-        _, summary, loss_val = session.run(
-            [optimizer, merged, loss],
-            feed_dict=feed_dict)
-        average_loss += loss_val
+        if step > 0 and step % alternate_losses_step == 0:
+            _, summary, tag_loss_val, movie_loss_val = session.run(
+                [optimizer2, merged, tag_loss, movie_loss],
+                feed_dict=feed_dict)
+        else:
+            _, summary, tag_loss_val, movie_loss_val = session.run(
+                [optimizer1, merged, tag_loss, movie_loss],
+                feed_dict=feed_dict)
+        average_loss_tag += tag_loss_val
+        average_loss_movie += movie_loss_val
+
         writer.add_summary(summary, step)
-        if step % 2000 == 0:
+        if step % report_every_steps == 0:
             if step > 0:
-                average_loss /= 2000
+                average_loss_tag /= report_every_steps
+                average_loss_movie /= report_every_steps
             # The average loss is an estimate of the loss over the last 2000 batches.
-            print('Average loss at step ', step, ': ', average_loss)
+            print('Average loss TAG at step ', step, ': ', average_loss_tag)
+            print('Average loss MOVIE at step ', step, ': ', average_loss_movie)
+            average_loss_tag = 0
+            average_loss_movie = 0
 
     final_embeddings = normalized_embeddings.eval()
-    with open("embeddings/PW2V_hard_" + str(embedding_size) + "_" + str(window_size) + "_" + str(neg_samples) + ".txt",
+    with open("PW2V_hard_" + str(embedding_size) + "_" + str(window_size) + "_" + str(neg_samples) + ".txt",
               'w+', encoding="utf8") as f:
         for i in range(vocab_size):
             f.write(tag_reversed_dictionary[i] + " ")
