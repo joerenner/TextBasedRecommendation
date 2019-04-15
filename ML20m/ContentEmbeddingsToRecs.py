@@ -1,6 +1,9 @@
 from KNearestNeighborsRec import KNearestNeighborsRecModel
 import data_processing
+import sys
 
+__input_embedding_file = sys.argv[1]
+__embedding_size = int(sys.argv[2])
 
 class ContentEmbToRec(KNearestNeighborsRecModel):
 
@@ -31,9 +34,9 @@ if words:
     movie_tags, vocab = data_processing.load_tags(train_sets, min_count=2)
     train, test = data_processing.filter_movies_with_no_tags(train, test, movie_tags)
 if weights:
-    weights = data_processing.load_word_weights("embeddings/PW2V_200_2_20_01_test.txt")
+    weights = data_processing.load_word_weights(__input_embedding_file)
 print("getting recs...")
-word_embed_to_recs = ContentEmbToRec("embeddings/PW2V_200_2_20_01_test.txt", 200, movie_tags, "tfidf", words)
+word_embed_to_recs = ContentEmbToRec(__input_embedding_file, __embedding_size, movie_tags, "tfidf", words)
 recs = word_embed_to_recs.get_recs(train, 10)
 hr, ndcg = data_processing.compute_metrics(recs, test)
 print(hr)

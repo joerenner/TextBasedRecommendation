@@ -2,10 +2,14 @@ from data_processing import load_data, load_tags, filter_movies_with_no_tags, bu
 import random
 import math
 import os
+import sys
 import numpy as np
 import tensorflow as tf
 
-os.environ["CUDA_VISIBLE_DEVICES"] = "1"
+__gpu_device - str(sys.argv[1])
+__alternate_loss_steps = int(sys.argv[2])
+
+os.environ["CUDA_VISIBLE_DEVICES"] = __gpu_device
 
 # Parameters
 batch_size = 128
@@ -14,7 +18,7 @@ window_size = 2
 neg_samples = 20
 learn_rate = 0.1
 num_steps = 500001
-alternate_losses_step = 100
+alternate_losses_step = __alternate_loss_steps
 
 # Data Loading
 print("loading data...")
@@ -203,7 +207,7 @@ with tf.Session(graph=graph) as session:
             average_loss_movie = 0
 
     final_embeddings = normalized_embeddings.eval()
-    with open("PW2V_hard_" + str(embedding_size) + "_" + str(window_size) + "_" + str(neg_samples) + ".txt",
+    with open("PW2V_hard_" + str(embedding_size) + "_" + str(window_size) + "_" + str(neg_samples) + "-" + str(alternate_losses_step) + ".txt",
               'w+', encoding="utf8") as f:
         for i in range(vocab_size):
             f.write(tag_reversed_dictionary[i] + " ")

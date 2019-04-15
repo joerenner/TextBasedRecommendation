@@ -2,10 +2,14 @@ from data_processing import load_data, load_tags, filter_movies_with_no_tags, bu
 import random
 import math
 import os
+import sys
 import numpy as np
 import tensorflow as tf
 
-os.environ["CUDA_VISIBLE_DEVICES"] = "2"
+__gpu_device - str(sys.argv[1])
+__alternate_loss_steps = int(sys.argv[2])
+
+os.environ["CUDA_VISIBLE_DEVICES"] = __gpu_device
 
 # Parameters
 batch_size = 128
@@ -13,8 +17,8 @@ embedding_size = 200
 window_size = 2
 neg_samples = 20
 learn_rate = 0.1
-num_steps = 5001
-alternate_losses_step = 200
+num_steps = 500001
+alternate_losses_step = __alternate_loss_steps
 
 # Data Loading
 print("loading data...")
@@ -80,6 +84,16 @@ def generate_batch(batch_size, window_size):
 
 
 # Model definition
+os.environ["CUDA_VISIBLE_DEVICES"] = "0"
+
+# Parameters
+batch_size = 128
+embedding_size = 200
+window_size = 2
+neg_samples = 20
+learn_rate = 0.1
+num_steps = 5001
+alternate_losses_step = 200
 graph = tf.Graph()
 with graph.as_default():
     # build ragged movie tags
@@ -187,16 +201,21 @@ with tf.Session(graph=graph) as session:
             # The average loss is an estimate of the loss over the last 2000 batches.
             print('Average loss TAG at step ', step, ': ', average_loss_tag)
             average_loss_tag = 0
-    
+   
+    print ("done. moving on...")
+
     user_index = 0 # reset index for batch generation
     for step in range(num_steps):
-        _, _, batch_movies, labels_movies = generate_batch(batch_size, window_size)
-        feed_dict = {train_movie_inputs: batch_movies,
-                     train_movie_labels: labels_movies}
+        batch_words, labels_words, batch_movies, labels_movies = generate_batch(batch_size, window_size)
+        feed_dict = {
+                train_word_inputs: batch_words,
+                train_word_labels: labels_words,
+                train_movie_inputs: batch_movies,
+                train_movie_labels: labels_movies}
 
         _, summary, movie_loss_val = session.run(
-            [optimizer2, merged, movie_loss],
-            feed_dict=feed_dict)
+                [optimizer2, merged, movie_loss],
+                feed_dict=feed_dict)
         average_loss_movie += movie_loss_val
 
         writer.add_summary(summary, step)
@@ -208,8 +227,8 @@ with tf.Session(graph=graph) as session:
             average_loss_movie = 0
 
     final_embeddings = normalized_embeddings.eval()
-    with open("embeddings/PW2V_hard_seq" + str(embedding_size) + "_" + str(window_size) + "_" + str(neg_samples) + "-" + str(alternate_losses_step) + ".txt",
-              'w+', encoding="utf8") as f:
+    with open("embeddings/PW2V_hard_seq_" + str(embedding_size) + "_" + str(window_size) + "_" + str(neg_samples) + "-" + str(alternate_losses_step) + ".txt",
+            'w+', encoding="utf8") as f:
         for i in range(vocab_size):
             f.write(tag_reversed_dictionary[i] + " ")
             f.write(np.array2string(final_embeddings[i], max_line_width=10000000))
