@@ -6,7 +6,7 @@ import sys
 import numpy as np
 import tensorflow as tf
 
-__gpu_device - str(sys.argv[1])
+__gpu_device = str(sys.argv[1])
 __alternate_loss_steps = int(sys.argv[2])
 
 os.environ["CUDA_VISIBLE_DEVICES"] = __gpu_device
