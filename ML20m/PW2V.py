@@ -6,9 +6,12 @@ import numpy as np
 import tensorflow as tf
 
 # Parameters
+__gpu_device = str(sys.argv[1])
+os.environ["CUDA_VISIBLE_DEVICES"] = __gpu_device
+
 batch_size = 128
 embedding_size = 200
-window_size = 2
+window_size = 3
 neg_samples = 20
 learn_rate = 0.1
 num_steps = 500001
