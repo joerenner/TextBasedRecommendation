@@ -207,7 +207,7 @@ with tf.Session(graph=graph) as session:
             average_loss_movie = 0
 
     final_embeddings = normalized_embeddings.eval()
-    with open("PW2V_hard_" + str(embedding_size) + "_" + str(window_size) + "_" + str(neg_samples) + "-" + str(alternate_losses_step) + ".txt",
+    with open("embeddings/PW2V_hard_" + str(embedding_size) + "_" + str(window_size) + "_" + str(neg_samples) + "-" + str(alternate_losses_step) + ".txt",
               'w+', encoding="utf8") as f:
         for i in range(vocab_size):
             f.write(tag_reversed_dictionary[i] + " ")
