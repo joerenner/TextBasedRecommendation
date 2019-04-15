@@ -7,7 +7,6 @@ import numpy as np
 import tensorflow as tf
 
 __gpu_device = str(sys.argv[1])
-__alternate_loss_steps = int(sys.argv[2])
 
 os.environ["CUDA_VISIBLE_DEVICES"] = __gpu_device
 
@@ -16,10 +15,10 @@ batch_size = 128
 embedding_size = 200
 window_size = 2
 neg_samples = 20
-learn_rate = 0.1
+learn_rate = 1e-4
+optimizer="adam"
 num_steps_opt_1 = 200001
 num_steps_opt_2 = 20001
-alternate_losses_step = __alternate_loss_steps
 
 # Data Loading
 print("loading data...")
@@ -154,8 +153,15 @@ with graph.as_default():
     tf.summary.scalar('tag_loss', tag_loss)
     tf.summary.scalar('movie_loss', tag_loss)
 
-    optimizer1 = tf.train.GradientDescentOptimizer(learn_rate).minimize(tag_loss)
-    optimizer2 = tf.train.GradientDescentOptimizer(learn_rate).minimize(movie_loss)
+    if optimizer=="sgd":
+        optimizer1 = tf.train.GradientDescentOptimizer(learn_rate).minimize(tag_loss)
+        optimizer2 = tf.train.GradientDescentOptimizer(learn_rate).minimize(movie_loss)
+    elif optimizer=="adam":
+        optimizer1 = tf.train.AdamOptimizer(learn_rate).minimize(tag_loss)
+        optimizer2 = tf.train.AdamOptimizer(learn_rate).minimize(movie_loss)
+    else:
+        print("unrecognized optimizer " + optimizer)
+        assert(False)
 
     norm = tf.sqrt(tf.reduce_sum(tf.square(word_embeddings), 1, keepdims=True))
     normalized_embeddings = word_embeddings / norm
@@ -217,7 +223,8 @@ with tf.Session(graph=graph) as session:
             average_loss_movie = 0
 
     final_embeddings = normalized_embeddings.eval()
-    with open("embeddings/PW2V_hard_seq_" + str(embedding_size) + "_" + str(window_size) + "_" + str(neg_samples) + "-" + str(alternate_losses_step) + ".txt",
+    with open("embeddings/PW2V_hard_size-" + str(embedding_size) + "-window-" + str(window_size) + "-neg-" + \
+            str(neg_samples) + "-lr-" + str(learn_rate) + "-optim-" + optimizer + ".txt",
             'w+', encoding="utf8") as f:
         for i in range(vocab_size):
             f.write(tag_reversed_dictionary[i] + " ")
