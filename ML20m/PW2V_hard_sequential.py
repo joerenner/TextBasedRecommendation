@@ -18,7 +18,7 @@ neg_samples = 20
 learn_rate = 1e-4
 optimizer="adam"
 num_steps_opt_1 = 200001
-num_steps_opt_2 = 20001
+num_steps_opt_2 = 10001
 
 # Data Loading
 print("loading data...")
