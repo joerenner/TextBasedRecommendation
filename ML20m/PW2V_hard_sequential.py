@@ -17,7 +17,8 @@ embedding_size = 200
 window_size = 2
 neg_samples = 20
 learn_rate = 0.1
-num_steps = 500001
+num_steps_opt_1 = 200001
+num_steps_opt_2 = 20001
 alternate_losses_step = __alternate_loss_steps
 
 # Data Loading
@@ -83,17 +84,6 @@ def generate_batch(batch_size, window_size):
             user_index = 0
 
 
-# Model definition
-os.environ["CUDA_VISIBLE_DEVICES"] = "0"
-
-# Parameters
-batch_size = 128
-embedding_size = 200
-window_size = 2
-neg_samples = 20
-learn_rate = 0.1
-num_steps = 5001
-alternate_losses_step = 200
 graph = tf.Graph()
 with graph.as_default():
     # build ragged movie tags
@@ -184,7 +174,7 @@ with tf.Session(graph=graph) as session:
     average_loss_movie = 0
 
     report_every_steps = 100
-    for step in range(num_steps):
+    for step in range(num_steps_opt_1):
         batch_words, labels_words, _, _ = generate_batch(batch_size, window_size)
         feed_dict = {train_word_inputs: batch_words,
                      train_word_labels: labels_words}
@@ -205,7 +195,7 @@ with tf.Session(graph=graph) as session:
     print ("done. moving on...")
 
     user_index = 0 # reset index for batch generation
-    for step in range(num_steps):
+    for step in range(num_steps_opt_2):
         batch_words, labels_words, batch_movies, labels_movies = generate_batch(batch_size, window_size)
         feed_dict = {
                 train_word_inputs: batch_words,
