@@ -1,3 +1,4 @@
+from KNearestNeighborsRec import KNearestNeighborsRecModel
 from data_processing import load_data, load_tags, filter_movies_with_no_tags, build_index_dictionary, get_movie_vocab
 import random
 import math
@@ -17,7 +18,7 @@ embedding_size = 200
 window_size = 3
 neg_samples = 20
 learn_rate = 1e-4
-num_steps = 500001
+num_steps = 200001
 optimizer="adam"
 alternate_losses_step = __alternate_loss_steps
 
@@ -46,6 +47,29 @@ del train_sets
 print("building graph...")
 user_index = 0  # where to start generating batch from
 tag_index = 0
+
+class ContentEmbToRec(KNearestNeighborsRecModel):
+
+    def __init__(self, word_embeddings, embedding_size, movie_tags, weights):
+        """
+            content_embed_file: pretrained word embeddings file name
+            embedding_size: vector size
+            movie_tags: dict of {movieId => list of tags}
+            weights:
+                None : uniform weighting for each word
+                "tfidf" : compute tfidf for each product tags, weight by value
+                vector of shape (vocab_size) : use learned word weights
+                words : Boolean, True: using word embeddings, False: product embeddings
+        """
+        self.item_vectors = data_processing.build_product_embeddings(embeddings, movie_tags, weights=weights)
+
+
+def eval (word_embeddings):
+    word_embed_to_recs = ContentEmbToRec(word_embeddings, embedding_size, movie_tags, None)
+    recs = word_embed_to_recs.get_recs(train, 10)
+    hr, ndcg = data_processing.compute_metrics(recs, test)
+    cs_hr, cs_ndcg = data_processing.compute_cold_start_metrics(recs, train, test, window_size=2)
+    return (hr, ndcg, cs_hr, cs_ndcg)
 
 
 def generate_batch(batch_size, window_size):
@@ -154,16 +178,17 @@ with graph.as_default():
 
     tag_loss = tf.reduce_mean(tag_loss)
     movie_loss = tf.reduce_mean(movie_loss)
+    normalize_loss = tf.sqrt(tf.reduce_sum(tf.square(word_embeddings), 1, keepdims=True))
 
     tf.summary.scalar('tag_loss', tag_loss)
     tf.summary.scalar('movie_loss', tag_loss)
 
     if optimizer=="sgd":
-        optimizer1 = tf.train.GradientDescentOptimizer(learn_rate).minimize(tag_loss)
-        optimizer2 = tf.train.GradientDescentOptimizer(learn_rate).minimize(movie_loss)
+        optimizer1 = tf.train.GradientDescentOptimizer(learn_rate).minimize(tag_loss + normalize_loss)
+        optimizer2 = tf.train.GradientDescentOptimizer(learn_rate).minimize(movie_loss + normalize_loss)
     elif optimizer=="adam":
-        optimizer1 = tf.train.AdamOptimizer(learn_rate).minimize(tag_loss)
-        optimizer2 = tf.train.AdamOptimizer(learn_rate).minimize(movie_loss)
+        optimizer1 = tf.train.AdamOptimizer(learn_rate).minimize(tag_loss + normalize_loss) 
+        optimizer2 = tf.train.AdamOptimizer(learn_rate).minimize(movie_loss + normalize_loss)
     else:
         print("unrecognized optimizer " + optimizer)
         assert(False)
@@ -213,10 +238,13 @@ with tf.Session(graph=graph) as session:
             print('Average loss MOVIE at step ', step, ': ', average_loss_movie)
             average_loss_tag = 0
             average_loss_movie = 0
+            (hr, ndcg, hr_cs, ndcg_cs) = eval(normalized_embeddings.eval())
 
     final_embeddings = normalized_embeddings.eval()
+    datestring = datetime.datetime.now().strftime('%Y%M%d%H%m%S')
     with open("embeddings/PW2V_hard_size-" + str(embedding_size) + "-window-" + str(window_size) + "-neg-" + \
-            str(neg_samples) + "-alternate-" + str(alternate_losses_step) + "-lr-" + str(learn_rate) + "-optim-" + optimizer + ".txt",
+            str(neg_samples) + "-alternate-" + str(alternate_losses_step) + "-lr-" + str(learn_rate) + \
+            "-optim-" + optimizer + "-" + datestring + ".txt",
               'w+', encoding="utf8") as f:
         for i in range(vocab_size):
             f.write(tag_reversed_dictionary[i] + " ")
