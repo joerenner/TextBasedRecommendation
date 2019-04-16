@@ -36,7 +36,7 @@ if words:
 if weights:
     weights = data_processing.load_word_weights(__input_embedding_file)
 print("getting recs...")
-word_embed_to_recs = ContentEmbToRec(__input_embedding_file, __embedding_size, movie_tags, "tfidf", words)
+word_embed_to_recs = ContentEmbToRec(__input_embedding_file, __embedding_size, movie_tags, None, words)
 recs = word_embed_to_recs.get_recs(train, 10)
 hr, ndcg = data_processing.compute_metrics(recs, test)
 print(hr)

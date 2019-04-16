@@ -1,5 +1,5 @@
 from KNearestNeighborsRec import KNearestNeighborsRecModel
-from data_processing import load_data, load_tags, filter_movies_with_no_tags, build_index_dictionary, get_movie_vocab
+from data_processing import load_data, load_tags, filter_movies_with_no_tags, build_index_dictionary, get_movie_vocab, compute_metrics, build_product_embeddings, compute_cold_start_metrics
 import random
 import math
 import os
@@ -61,14 +61,17 @@ class ContentEmbToRec(KNearestNeighborsRecModel):
                 vector of shape (vocab_size) : use learned word weights
                 words : Boolean, True: using word embeddings, False: product embeddings
         """
-        self.item_vectors = data_processing.build_product_embeddings(embeddings, movie_tags, weights=weights)
+        self.item_vectors = build_product_embeddings(word_embeddings, movie_tags, weights=weights)
 
 
 def eval (word_embeddings):
-    word_embed_to_recs = ContentEmbToRec(word_embeddings, embedding_size, movie_tags, None)
+    embeddings = {}
+    for k,v in tag_reversed_dictionary.items():
+        embeddings[v]=word_embeddings[k,:]
+    word_embed_to_recs = ContentEmbToRec(embeddings, embedding_size, movie_tags, None)
     recs = word_embed_to_recs.get_recs(train, 10)
-    hr, ndcg = data_processing.compute_metrics(recs, test)
-    cs_hr, cs_ndcg = data_processing.compute_cold_start_metrics(recs, train, test, window_size=2)
+    hr, ndcg = compute_metrics(recs, test)
+    cs_hr, cs_ndcg = compute_cold_start_metrics(recs, train, test, window_size=2)
     return (hr, ndcg, cs_hr, cs_ndcg)
 
 
@@ -238,7 +241,6 @@ with tf.Session(graph=graph) as session:
             print('Average loss MOVIE at step ', step, ': ', average_loss_movie)
             average_loss_tag = 0
             average_loss_movie = 0
-            (hr, ndcg, hr_cs, ndcg_cs) = eval(normalized_embeddings.eval())
 
     final_embeddings = normalized_embeddings.eval()
     datestring = datetime.datetime.now().strftime('%Y%M%d%H%m%S')
@@ -253,3 +255,7 @@ with tf.Session(graph=graph) as session:
 
     saver.save(session, os.path.join("tf_events", 'modelPW2V.ckpt'))
     writer.close()
+
+    (hr, ndcg, hr_cs, ndcg_cs) = eval(final_embeddings)
+    print(f"Eval: precision = {hr:.2f} %, CS precision = {hr_cs:.2f} %")
+
