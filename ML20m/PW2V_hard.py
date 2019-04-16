@@ -1,5 +1,5 @@
 from KNearestNeighborsRec import KNearestNeighborsRecModel
-from data_processing import load_data, load_tags, filter_movies_with_no_tags, build_index_dictionary, get_movie_vocab, compute_metrics, build_product_embeddings, compute_cold_start_metrics
+from data_processing import load_data, load_tags, filter_movies_with_no_tags, build_index_dictionary, get_movie_vocab, compute_metrics, build_product_embeddings, compute_cold_start_metrics, sample_dataset
 import datetime
 import random
 import math
@@ -7,6 +7,8 @@ import os
 import sys
 import numpy as np
 import tensorflow as tf
+import numpy as np
+
 
 __gpu_device = str(sys.argv[1])
 __alternate_loss_steps = int(sys.argv[2])
@@ -27,6 +29,7 @@ alternate_losses_step = __alternate_loss_steps
 print("loading data...")
 # train: {userID (string) => list_of_movies}, train_sets: {userID => set(movies)}, test: {userID => next movie}
 train, train_sets, test = load_data(validation=False)
+train_sampled, test_sampled = sample_dataset (train, test, .01) # sampling for metric computation
 # movie_tags: {movieID (str)=>tagId (str), loads tags (if in user-movie combo is in train set), includes genres as tags
 movie_tags, vocab = load_tags(train_sets, min_count=2)
 print("done")
@@ -72,7 +75,10 @@ def eval (word_embeddings):
     embeddings = {}
     for k,v in tag_reversed_dictionary.items():
         embeddings[v]=word_embeddings[k,:]
+        assert(abs(np.linalg.norm(embedding[v])-1)<1E-6)
     word_embed_to_recs = ContentEmbToRec(embeddings, embedding_size, movie_tags, None)
+    nkeys = len(train_sampled)
+    print(f"Metrics computed on {nkeys} keys")
     recs = word_embed_to_recs.get_recs(train, 10)
     hr, ndcg = compute_metrics(recs, test)
     cs_hr, cs_ndcg = compute_cold_start_metrics(recs, train, test, window_size=2)
