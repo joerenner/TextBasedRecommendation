@@ -1,5 +1,5 @@
 import numpy as np
-
+import random
 
 def append_to_value_list(key, value, d):
     if key in d:
@@ -222,11 +222,25 @@ def compute_metrics(recs, test):
     num_users = len(list(recs.keys()))
     hit_rate = 0.0
     nDCG = 0.0
+    num_users_so_far = 0
     for user, rec_items in recs.items():
+        num_users_so_far += 1
         if test[user] in rec_items:
             hit_rate += 1.0 / k
             nDCG += 1.0 / np.log2(rec_items.index(test[user]) + 2)
+            hit_rate_so_far = hit_rate / num_users_so_far
+            nDCG_so_far = nDCG / num_users_so_far
+            if num_users_so_far % 1000 == 0:
+                print(f"Hit rate: {hit_rate_so_far:>10.8f}  NDCG: {nDCG_so_far:>10.8f}")
     return hit_rate / num_users, nDCG / num_users
+
+
+def sample_dataset (train, test, sampling_ratio):
+    keys = set(train.keys()).union(set(test.keys()))
+    sub_keys = random.sample (keys, int(sampling_ratio * len(keys)))
+    train_sampled = dict((k,train[k]) for k in sub_keys)
+    test_sampled = dict((k,test[k]) for k in sub_keys)
+    return (train_sampled, test_sampled)
 
 
 def compute_cold_start_metrics(recs, train, test, window_size=1):
