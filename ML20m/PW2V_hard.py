@@ -75,7 +75,7 @@ def eval (word_embeddings):
     embeddings = {}
     for k,v in tag_reversed_dictionary.items():
         embeddings[v]=word_embeddings[k,:]
-        assert(abs(np.linalg.norm(embedding[v])-1)<1E-6)
+        #assert(abs(np.linalg.norm(embedding[v])-1)<1E-6)
     word_embed_to_recs = ContentEmbToRec(embeddings, embedding_size, movie_tags, None)
     nkeys = len(train_sampled)
     print(f"Metrics computed on {nkeys} keys")
