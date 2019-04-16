@@ -21,7 +21,7 @@ embedding_size = 200
 window_size = 3
 neg_samples = 20
 learn_rate = 1e-4
-num_steps = 2001
+num_steps = 200001
 optimizer="adam"
 alternate_losses_step = __alternate_loss_steps
 
@@ -230,6 +230,8 @@ with graph.as_default():
 
     tf.summary.scalar('tag_loss', tag_loss)
     tf.summary.scalar('movie_loss', tag_loss)
+#    tf.summary.histogram('tag_weights', tf.reshape(nce_word_weights, [-1]))
+#    tf.summary.histogram('tag_biases', nce_word_biases)
 
     if optimizer=="sgd":
         optimizer1 = tf.train.GradientDescentOptimizer(learn_rate).minimize(tag_loss + normalize_loss)
@@ -249,9 +251,11 @@ with graph.as_default():
     saver = tf.train.Saver()
 
 n_cpus = 16
+datestring = datetime.datetime.now().strftime('%Y%M%d%H%m%S')
 
 with tf.Session(graph=graph) as session:
-    writer = tf.summary.FileWriter("tf_events", session.graph)
+    train_writer = tf.summary.FileWriter(os.path.join("tf_events",datestring,"train"), session.graph)
+    validation_writer = tf.summary.FileWriter(os.path.join("tf_events",datestring,"validation"), session.graph)
     init.run()
     print('graph initialized')
     average_loss_tag = 0
@@ -276,7 +280,7 @@ with tf.Session(graph=graph) as session:
         average_loss_tag += tag_loss_val
         average_loss_movie += movie_loss_val
 
-        writer.add_summary(summary, step)
+        train_writer.add_summary(summary, step)
 
         if step % report_every_steps == 0:
             # validation loss
@@ -285,7 +289,8 @@ with tf.Session(graph=graph) as session:
                          train_word_labels: labels_words_val,
                          train_movie_inputs: batch_movies_val,
                          train_movie_labels: labels_movies_val}
-            tag_loss_validation, movie_loss_validation = session.run([tag_loss, movie_loss], feed_dict=feed_dict)
+            summary, tag_loss_validation, movie_loss_validation = session.run([merged, tag_loss, movie_loss], feed_dict=feed_dict)
+            validation_writer.add_summary(summary, step)
 
             if step > 0:
                 average_loss_tag /= report_every_steps
@@ -295,8 +300,9 @@ with tf.Session(graph=graph) as session:
             average_loss_tag = 0
             average_loss_movie = 0
 
+
+
     final_embeddings = normalized_embeddings.eval()
-    datestring = datetime.datetime.now().strftime('%Y%M%d%H%m%S')
     with open("embeddings/PW2V_hard_size-" + str(embedding_size) + "-window-" + str(window_size) + "-neg-" + \
             str(neg_samples) + "-alternate-" + str(alternate_losses_step) + "-lr-" + str(learn_rate) + \
             "-optim-" + optimizer + "-" + datestring + ".txt",
