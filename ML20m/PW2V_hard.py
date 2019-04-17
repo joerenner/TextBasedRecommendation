@@ -313,7 +313,8 @@ with tf.Session(graph=graph) as session:
             f.write("\n")
 
     saver.save(session, os.path.join("tf_events", 'modelPW2V.ckpt'))
-    writer.close()
+    train_writer.close()
+    validation_writer.close()
 
     (hr, ndcg, hr_cs, ndcg_cs) = eval(final_embeddings)
     print(hr, ndcg, hr_cs, ndcg_cs)
