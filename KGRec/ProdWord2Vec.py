@@ -159,54 +159,30 @@ class ProdWord2VecModel(KNearestNeighborsRecModel, ToVecTrainerModel):
         return couples, labels
 
 
-
-print("loading embeddings")
-pw2v_model = ProdWord2VecModel(vector_size=100)
-pw2v_model.compute_tfidf_vectors()
-word_vectors = {}
-with open("embeddings/word_embeddings100.txt", 'r') as f:
-    for line in f:
-        item_id = line[line.index("(")+2:line.index(",")-1]
-        vector = line[line.index("[")+1:-3].split(",")
-        vector = [float(x.strip()) for x in vector]
-        word_vectors[item_id] = vector
-pw2v_model.build_item_vectors(word_vectors, True)
-train, valid, test = Utils.load_dataset(pw2v_model.item_vectors)
-print("discounting invalid tags")
-pw2v_model.discount_invalid_tags(train, valid, True)
-train, valid, test = Utils.load_dataset(pw2v_model.item_vectors)
-print("getting recommendations")
-recs = pw2v_model.get_recs(train, k=10)
-print("computing metrics")
-hr, ndcg = Utils.compute_metrics(recs, valid)
-print(hr)
-print(ndcg)
-hr_cs, ndcg_cs = Utils.compute_cold_start_metrics(recs, train, test, window_size=1)
-print(hr_cs)
-print(ndcg_cs)
-exit(0)
-
-
-"""
-for songId, tag_list in id_vec_mapping.items():
-    for (tag, _) in tag_list:
-        if tag in tag_songs_dict:
-            tag_songs_dict[tag].append(songId)
-        else:
-            tag_songs_dict[tag] = [songId]
-print(len(tag_songs_dict.keys()))
-
-invalid_tags = set()
-for user, songs in train.items():
-    for tag, tag_songs in tag_songs_dict.items():
-        if Utils.test_tag_placement(tag_songs, songs):
-            if tag in invalid_tags:
-                invalid_tags.remove(tag)
-            else:
-                invalid_tags.add(tag)
-
-print(invalid_tags)
-print(len(invalid_tags))
-"""
+if __name__ == "__main__":
+    print("loading embeddings")
+    pw2v_model = ProdWord2VecModel(vector_size=100)
+    pw2v_model.compute_tfidf_vectors()
+    word_vectors = {}
+    with open("embeddings/word_embeddings100.txt", 'r') as f:
+        for line in f:
+            item_id = line[line.index("(")+2:line.index(",")-1]
+            vector = line[line.index("[")+1:-3].split(",")
+            vector = [float(x.strip()) for x in vector]
+            word_vectors[item_id] = vector
+    pw2v_model.build_item_vectors(word_vectors, True)
+    train, valid, test = Utils.load_dataset(pw2v_model.item_vectors)
+    print("discounting invalid tags")
+    pw2v_model.discount_invalid_tags(train, valid, True)
+    train, valid, test = Utils.load_dataset(pw2v_model.item_vectors)
+    print("getting recommendations")
+    recs = pw2v_model.get_recs(train, k=10)
+    print("computing metrics")
+    hr, ndcg = Utils.compute_metrics(recs, valid)
+    print(hr)
+    print(ndcg)
+    hr_cs, ndcg_cs = Utils.compute_cold_start_metrics(recs, train, test, window_size=1)
+    print(hr_cs)
+    print(ndcg_cs)
 
 

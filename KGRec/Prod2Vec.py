@@ -80,30 +80,31 @@ class Prod2VecModel(KNearestNeighborsRecModel, ToVecTrainerModel):
             self.item_vectors[item_id] = dense_vec / norm_value
 
 
-train, valid, test = Utils.load_dataset()
-print("loading embeddings")
-p2v_model = Prod2VecModel(vector_size=50)
-with open("embeddings/p2v_embeddings_50_3.txt", 'r') as f:
-    for line in f:
-        item_id = line[line.index("(")+2:line.index(",")-1]
-        vector = line[line.index("[")+1:-3].split(",")
-        vector = [float(x.strip()) for x in vector]
-        p2v_model.item_vectors[item_id] = vector
+if __name__ == "__main__":
 
-print("getting recommendations")
-recs = p2v_model.get_recs(train, k=10)
-print("computing metrics")
-hr, ndcg = Utils.compute_metrics(recs, test)
-print(hr)
-print(ndcg)
-hr_cs, ndcg_cs = Utils.compute_cold_start_metrics(recs, train, test, window_size=5)
-print(hr_cs)
-print(ndcg_cs)
+    train, valid, test = Utils.load_dataset()
+    print("loading embeddings")
+    p2v_model = Prod2VecModel(vector_size=50)
+    with open("embeddings/p2v_embeddings_50_3.txt", 'r') as f:
+        for line in f:
+            item_id = line[line.index("(")+2:line.index(",")-1]
+            vector = line[line.index("[")+1:-3].split(",")
+            vector = [float(x.strip()) for x in vector]
+            p2v_model.item_vectors[item_id] = vector
 
-exit(0)
-print("computing item vectors")
-p2v_model.train_embeddings(train, epochs=1000000,
-                           id_index_dict_file="id_index_file.pkl", prev_model="p2vEmbeddingModel.h5")
-p2v_model.compute_vectors(id_index_dict_file="id_index_file.pkl", model_file="p2vEmbeddingModel.h5")
+    print("getting recommendations")
+    recs = p2v_model.get_recs(train, k=10)
+    print("computing metrics")
+    hr, ndcg = Utils.compute_metrics(recs, test)
+    print(hr)
+    print(ndcg)
+    hr_cs, ndcg_cs = Utils.compute_cold_start_metrics(recs, train, test, window_size=5)
+    print(hr_cs)
+    print(ndcg_cs)
 
+    exit(0)
+    print("computing item vectors")
+    p2v_model.train_embeddings(train, epochs=1000000,
+                               id_index_dict_file="id_index_file.pkl", prev_model="p2vEmbeddingModel.h5")
+    p2v_model.compute_vectors(id_index_dict_file="id_index_file.pkl", model_file="p2vEmbeddingModel.h5")
 
